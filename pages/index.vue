@@ -1,6 +1,35 @@
 <template>
-  <section class="bg-black">
-    <form class="container" @submit.prevent="submit">
+  <section class="bg-black w-screen h-screen" @click="go">
+    <div v-if="showingCredit < 10" class="credits text-white container">
+      <h1 v-if="showingCredit === 0">
+        26 Non-Compositions
+      </h1>
+      <h2 v-if="showingCredit === 1">
+        (or however many will fit in {{ timeRemaining }})
+      </h2>
+      <h3 v-if="showingCredit === 2">
+        (and none of which will ever be heard again)
+      </h3>
+      <div v-if="[3, 5, 7, 9].indexOf(showingCredit) > -1"></div>
+      <div v-if="showingCredit === 4">
+        <h3 class="mb-2">Object Composition:</h3>
+        <p>Combining simple objects to create more complex ones.</p>
+      </div>
+      <div v-if="showingCredit === 6">
+        <h3 class="mb-2">Compositionality:</h3>
+        <p>
+          the principle that the meaning of a whole derives directly<br />from
+          the meaning of its parts and the ways in which they are combined.
+        </p>
+      </div>
+      <div v-if="showingCredit === 8">
+        <p class="mb-2">
+          “I wanted to end composing, get rid of it. I wanted it to die out.”
+        </p>
+        <h3>Tony Conrad</h3>
+      </div>
+    </div>
+    <form v-else class="container" @submit.prevent="submit">
       <div>
         <input
           id="myRange"
@@ -14,7 +43,7 @@
         />
       </div>
       <input v-model="text" type="textarea" @focus="init" />
-      <a href="#" @click.prevent="go">Start</a>
+      <a href="#" @click.prevent="startSound">Start</a>
       <a href="#" @click.prevent="stopNodes">Stop</a>
       <div>
         <canvas id="scope" ref="scope" width="300" height="150"></canvas>
@@ -40,11 +69,25 @@ export default {
       analyzer: null,
       scopeArray: null,
       scopeCtx: null,
-      keyMap: []
+      keyMap: [],
+      showingCredit: -1,
+      startedMSAgo: 0
+    }
+  },
+  computed: {
+    timeRemaining() {
+      const millisecondsAgo = 1000 * 60 * 10 - this.startedMSAgo
+      return (
+        this.zeroPad(Math.floor(millisecondsAgo / (1000 * 60)), 2) +
+        ':' +
+        this.zeroPad(Math.floor((millisecondsAgo % 60) / 1000), 2) +
+        ':' +
+        this.zeroPad(millisecondsAgo % (60 * 1000), 5)
+      )
     }
   },
   mounted() {
-    this.init()
+    // this.init()
   },
   destroyed() {
     this.stopNodes()
@@ -69,7 +112,7 @@ export default {
     },
     submit() {
       this.stopNodes()
-      this.go()
+      this.startSound()
     },
     generateNodes() {
       const words = this.text.split(' ')
@@ -88,13 +131,25 @@ export default {
         this.nodesSeries.push(series)
       })
     },
-    go() {
+    async go() {
+      setInterval(() => this.startedMSAgo++, 1)
+      for (let i = 0; i < 11; i++) {
+        let time = 3000
+        if (i === 6) {
+          time = 5000
+        }
+        this.showingCredit = i
+        await this.timeoutPromise(time)
+      }
+      this.startSound()
+    },
+    startSound() {
       this.init()
       this.generateNodes()
       this.setMixerGain()
       this.connectNodes()
       this.startNodes()
-      this.draw()
+      // this.draw()
     },
     setMixerGain() {
       const gain = 1.0 / this.nodesSeries.length
@@ -173,6 +228,12 @@ export default {
         this.keyMap.push(i)
       }
       this.keyMap = this.keyMap.sort(() => Math.random() - 0.5)
+    },
+    timeoutPromise(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms))
+    },
+    zeroPad(num, digits) {
+      return num < Math.pow(10, digits - 1) ? '0' + num : num
     }
   }
 }
